@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "559535356952",
+    "project_id": "todoapp-ffca2",
+    "storage_bucket": "todoapp-ffca2.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:559535356952:android:2f421603299b655eae976d",
+        "android_client_info": {
+          "package_name": "com.example.expense_tracker"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyA8-m7PT03fn9q_bBjM0bQKr88rs84-n74"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
