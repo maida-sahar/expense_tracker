@@ -1,7 +1,9 @@
 // lib/widgets/category_picker.dart
 
-import 'package:expense_tracker/models/category.dart';
+import 'package:expense_tracker/Notifier/transaction_notifier.dart';
+import 'package:expense_tracker/views/category_manager.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 class CategoryPicker extends StatelessWidget {
   final bool isIncome;
@@ -17,28 +19,71 @@ class CategoryPicker extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final categories = Categories.forType(isIncome);
+    final notifier = context.watch<TransactionNotifier>();
+    final categories = notifier.allCategories(isIncome);
+
     return SizedBox(
-      height: 88,
+      height: 90,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
-        itemCount: categories.length,
+        itemCount: categories.length + 1,
         separatorBuilder: (_, __) => const SizedBox(width: 10),
         itemBuilder: (context, i) {
+          if (i == categories.length) {
+            // Add custom category button
+            return GestureDetector(
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const CategoryManagerView()),
+              ),
+              child: Container(
+                width: 72,
+                padding: const EdgeInsets.symmetric(vertical: 10),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.4),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(
+                    color: Theme.of(context).colorScheme.outlineVariant,
+                    width: 1,
+                  ),
+                ),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.add_circle_outline_rounded,
+                        color: Theme.of(context).colorScheme.primary, size: 24),
+                    const SizedBox(height: 6),
+                    Text(
+                      'Custom',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 10.5,
+                        fontWeight: FontWeight.w600,
+                        color: Theme.of(context).colorScheme.primary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          }
+
           final cat = categories[i];
           final selected = cat.id == selectedId;
           return GestureDetector(
             onTap: () => onSelected(cat.id),
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 180),
-              width: 72,
-              padding: const EdgeInsets.symmetric(vertical: 10),
+              width: 76,
+              padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 4),
               decoration: BoxDecoration(
-                color: selected ? cat.color.withOpacity(0.16) : Theme.of(context).colorScheme.surfaceContainerHighest.withOpacity(0.5),
+                color: selected
+                    ? cat.color.withValues(alpha: 0.16)
+                    : Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
                 borderRadius: BorderRadius.circular(16),
                 border: Border.all(
                   color: selected ? cat.color : Colors.transparent,
-                  width: 1.6,
+                  width: 1.8,
                 ),
               ),
               child: Column(
@@ -68,3 +113,4 @@ class CategoryPicker extends StatelessWidget {
     );
   }
 }
+

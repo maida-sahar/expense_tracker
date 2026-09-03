@@ -1,6 +1,4 @@
 // lib/Notifier/settings_notifier.dart
-//
-// Persists theme mode + currency choice locally with shared_preferences.
 
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -19,19 +17,25 @@ const List<Currency> kSupportedCurrencies = [
   Currency('GBP', '£', 'British Pound'),
   Currency('INR', '₹', 'Indian Rupee'),
   Currency('AED', 'د.إ', 'UAE Dirham'),
+  Currency('CAD', 'CA\$', 'Canadian Dollar'),
+  Currency('AUD', 'A\$', 'Australian Dollar'),
 ];
 
 class SettingsNotifier extends ChangeNotifier {
   static const _kThemeKey = 'theme_mode';
   static const _kCurrencyKey = 'currency_code';
+  static const _kNotifKey = 'notifications_enabled';
 
-  ThemeMode _themeMode = ThemeMode.light;
+  // Default to Dark Mode to match CashFlow Pro reference image design!
+  ThemeMode _themeMode = ThemeMode.dark;
   Currency _currency = kSupportedCurrencies.first;
+  bool _notificationsEnabled = true;
   bool _loaded = false;
 
   ThemeMode get themeMode => _themeMode;
   Currency get currency => _currency;
   bool get isDark => _themeMode == ThemeMode.dark;
+  bool get notificationsEnabled => _notificationsEnabled;
   bool get loaded => _loaded;
 
   SettingsNotifier() {
@@ -41,7 +45,8 @@ class SettingsNotifier extends ChangeNotifier {
   Future<void> _load() async {
     final prefs = await SharedPreferences.getInstance();
     final themeStr = prefs.getString(_kThemeKey);
-    _themeMode = themeStr == 'dark' ? ThemeMode.dark : ThemeMode.light;
+    // If user hasn't explicitly chosen light, default to dark theme
+    _themeMode = themeStr == 'light' ? ThemeMode.light : ThemeMode.dark;
 
     final code = prefs.getString(_kCurrencyKey);
     if (code != null) {
@@ -50,6 +55,8 @@ class SettingsNotifier extends ChangeNotifier {
         orElse: () => kSupportedCurrencies.first,
       );
     }
+
+    _notificationsEnabled = prefs.getBool(_kNotifKey) ?? true;
     _loaded = true;
     notifyListeners();
   }
@@ -67,4 +74,12 @@ class SettingsNotifier extends ChangeNotifier {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_kCurrencyKey, c.code);
   }
+
+  Future<void> toggleNotifications(bool enabled) async {
+    _notificationsEnabled = enabled;
+    notifyListeners();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_kNotifKey, enabled);
+  }
 }
+

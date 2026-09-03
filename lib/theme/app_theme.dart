@@ -1,9 +1,4 @@
 // lib/theme/app_theme.dart
-//
-// Centralized design tokens: palette, gradients, typography, and the
-// light/dark ThemeData built from them. Keeping this in one file means the
-// rest of the app pulls colors from Theme.of(context) rather than hardcoding
-// hex values everywhere.
 
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -11,39 +6,51 @@ import 'package:google_fonts/google_fonts.dart';
 class AppColors {
   AppColors._();
 
-  // Brand — deep teal/emerald, distinct from the generic purple/blue most
-  // finance-app templates default to.
-  static const primary = Color.fromARGB(255, 54, 201, 179);
-  static const primaryLight = Color.fromARGB(255, 61, 157, 138);
-  static const primaryDark = Color(0xFF082E28);
+  // CashFlow Pro Dark Emerald Palette (inspired by reference UI)
+  static const primary = Color(0xFF10B981); // Mint green accent
+  static const primaryLight = Color(0xFF34D399);
+  static const primaryDark = Color(0xFF047857);
 
-  static const income = Color.fromARGB(255, 48, 193, 108);
-  static const expense = Color(0xFFFF6B6B);
-  static const budgetWarn = Color(0xFFFFB020);
+  static const income = Color(0xFF10B981);
+  static const expense = Color(0xFFF97316); // Vibrant Coral / Neon Orange
+  static const budgetWarn = Color(0xFFF59E0B);
 
-  static const heroGradient = [Color.fromARGB(255, 31, 148, 130), Color.fromARGB(255, 41, 173, 147)];
-  static const heroGradientDark = [Color(0xFF061F1B), Color(0xFF0E4F45)];
+  // CashFlow Pro Dark Backgrounds & Surfaces
+  static const darkBg = Color(0xFF0B1513);
+  static const darkSurface = Color(0xFF122320);
+  static const darkCard = Color(0xFF162C27);
+  static const darkBorder = Color(0xFF1F3D36);
 
-  static const lightBg = Color(0xFFF4F7F6);
-  static const darkBg = Color(0xFF0B1210);
-  static const darkSurface = Color(0xFF141F1C);
+  static const lightBg = Color(0xFFF3F6F5);
+  static const lightSurface = Color(0xFFFFFFFF);
+
+  static const heroGradientDark = [
+    Color(0xFF071B17),
+    Color(0xFF0E3029),
+  ];
+
+  static const heroGradientLight = [
+    Color(0xFF0D9488),
+    Color(0xFF10B981),
+  ];
 }
 
 TextTheme _textTheme(Brightness brightness) {
   final base = brightness == Brightness.dark
       ? Typography.whiteMountainView
       : Typography.blackMountainView;
-  final body = GoogleFonts.interTextTheme(base);
-  final display = GoogleFonts.manropeTextTheme(base);
+  final body = GoogleFonts.plusJakartaSansTextTheme(base);
+  final display = GoogleFonts.outfitTextTheme(base);
   return body.copyWith(
-    displayLarge: display.displayLarge,
-    displayMedium: display.displayMedium,
-    displaySmall: display.displaySmall,
+    displayLarge: display.displayLarge?.copyWith(fontWeight: FontWeight.w800),
+    displayMedium: display.displayMedium?.copyWith(fontWeight: FontWeight.w800),
+    displaySmall: display.displaySmall?.copyWith(fontWeight: FontWeight.w700),
     headlineLarge: display.headlineLarge?.copyWith(fontWeight: FontWeight.w800),
     headlineMedium: display.headlineMedium?.copyWith(fontWeight: FontWeight.w800),
     headlineSmall: display.headlineSmall?.copyWith(fontWeight: FontWeight.w700),
     titleLarge: display.titleLarge?.copyWith(fontWeight: FontWeight.w700),
     titleMedium: display.titleMedium?.copyWith(fontWeight: FontWeight.w600),
+    titleSmall: display.titleSmall?.copyWith(fontWeight: FontWeight.w600),
   );
 }
 
@@ -53,8 +60,9 @@ ThemeData buildLightTheme() {
     brightness: Brightness.light,
   ).copyWith(
     primary: AppColors.primary,
+    secondary: AppColors.primaryDark,
     error: AppColors.expense,
-    surface: Colors.white,
+    surface: AppColors.lightSurface,
   );
 
   return ThemeData(
@@ -65,45 +73,51 @@ ThemeData buildLightTheme() {
     textTheme: _textTheme(Brightness.light),
     cardTheme: CardThemeData(
       elevation: 0,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(22),
+        side: const BorderSide(color: Color(0xFFE2E8F0)),
+      ),
       color: Colors.white,
     ),
     inputDecorationTheme: InputDecorationTheme(
       filled: true,
-      fillColor: const Color(0xFFEFF3F2),
+      fillColor: const Color(0xFFEDF2F1),
       border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(16),
         borderSide: BorderSide.none,
       ),
-      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(16),
+        borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
+      ),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
     ),
     floatingActionButtonTheme: FloatingActionButtonThemeData(
       backgroundColor: AppColors.primary,
       foregroundColor: Colors.white,
-      elevation: 4,
+      elevation: 6,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
     ),
     appBarTheme: const AppBarTheme(
       backgroundColor: Colors.transparent,
-      foregroundColor: Colors.white,
+      foregroundColor: Color(0xFF0F172A),
       elevation: 0,
       centerTitle: false,
-    ),
-    bottomNavigationBarTheme: const BottomNavigationBarThemeData(
-      backgroundColor: Colors.white,
-      elevation: 0,
     ),
   );
 }
 
 ThemeData buildDarkTheme() {
   final scheme = ColorScheme.fromSeed(
-    seedColor: AppColors.primaryLight,
+    seedColor: AppColors.primary,
     brightness: Brightness.dark,
   ).copyWith(
-    primary: AppColors.primaryLight,
+    primary: AppColors.primary,
+    secondary: AppColors.primaryLight,
     error: AppColors.expense,
     surface: AppColors.darkSurface,
+    surfaceContainerHighest: AppColors.darkCard,
+    onSurfaceVariant: const Color(0xFF94A3B8),
   );
 
   return ThemeData(
@@ -114,22 +128,33 @@ ThemeData buildDarkTheme() {
     textTheme: _textTheme(Brightness.dark),
     cardTheme: CardThemeData(
       elevation: 0,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-      color: AppColors.darkSurface,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(22),
+        side: const BorderSide(color: AppColors.darkBorder, width: 1),
+      ),
+      color: AppColors.darkCard,
     ),
     inputDecorationTheme: InputDecorationTheme(
       filled: true,
-      fillColor: Colors.white.withOpacity(0.06),
+      fillColor: AppColors.darkSurface,
       border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(14),
-        borderSide: BorderSide.none,
+        borderRadius: BorderRadius.circular(16),
+        borderSide: const BorderSide(color: AppColors.darkBorder, width: 1),
       ),
-      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(16),
+        borderSide: const BorderSide(color: AppColors.darkBorder, width: 1),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(16),
+        borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
+      ),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
     ),
     floatingActionButtonTheme: FloatingActionButtonThemeData(
-      backgroundColor: AppColors.primaryLight,
+      backgroundColor: AppColors.primary,
       foregroundColor: Colors.white,
-      elevation: 4,
+      elevation: 6,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
     ),
     appBarTheme: const AppBarTheme(
@@ -138,9 +163,6 @@ ThemeData buildDarkTheme() {
       elevation: 0,
       centerTitle: false,
     ),
-    bottomNavigationBarTheme: BottomNavigationBarThemeData(
-      backgroundColor: AppColors.darkSurface,
-      elevation: 0,
-    ),
   );
 }
+

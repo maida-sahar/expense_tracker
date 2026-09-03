@@ -21,7 +21,7 @@ class AuthGate extends StatelessWidget {
 
     if (auth.initializing) {
       final isDark = Theme.of(context).brightness == Brightness.dark;
-      final gradient = isDark ? AppColors.heroGradientDark : AppColors.heroGradient;
+      final gradient = isDark ? AppColors.heroGradientDark : AppColors.heroGradientLight;
       return Scaffold(
         body: Container(
           decoration: BoxDecoration(

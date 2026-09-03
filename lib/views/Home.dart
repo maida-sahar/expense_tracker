@@ -15,8 +15,8 @@ class HomePage extends StatelessWidget {
       barrierLabel: 'Dismiss',
       barrierColor: Colors.black54,
       transitionDuration: const Duration(milliseconds: 320),
-      pageBuilder: (_, __, ___) => AddDialog(editId: editId),
-      transitionBuilder: (_, anim, __, child) {
+      pageBuilder: (context, animation, secondaryAnimation) => AddDialog(editId: editId),
+      transitionBuilder: (context, anim, secondaryAnimation, child) {
         final curved =
             CurvedAnimation(parent: anim, curve: Curves.easeOutCubic);
         return ScaleTransition(

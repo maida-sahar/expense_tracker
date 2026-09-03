@@ -3,27 +3,71 @@
 import 'package:expense_tracker/Notifier/auth_notifier.dart';
 import 'package:expense_tracker/Notifier/settings_notifier.dart';
 import 'package:expense_tracker/theme/app_theme.dart';
-import 'package:expense_tracker/views/budget_sheet.dart';
+import 'package:expense_tracker/views/budget_view.dart';
+import 'package:expense_tracker/views/category_manager.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 class SettingsView extends StatelessWidget {
   const SettingsView({super.key});
 
+  void _showEditNameDialog(BuildContext context, String currentName) {
+    final nameCtrl = TextEditingController(text: currentName);
+    bool saving = false;
+
+    showDialog(
+      context: context,
+      builder: (dialogCtx) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+          title: const Text('Edit Display Name', style: TextStyle(fontWeight: FontWeight.w700)),
+          content: TextField(
+            controller: nameCtrl,
+            textCapitalization: TextCapitalization.words,
+            decoration: const InputDecoration(
+              labelText: 'Full Name',
+              prefixIcon: Icon(Icons.person_outline_rounded),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: saving ? null : () => Navigator.pop(dialogCtx),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: saving
+                  ? null
+                  : () async {
+                      final newName = nameCtrl.text.trim();
+                      if (newName.isEmpty) return;
+                      setDialogState(() => saving = true);
+                      await context.read<AuthNotifier>().user?.updateDisplayName(newName);
+                      if (dialogCtx.mounted) Navigator.pop(dialogCtx);
+                    },
+              child: saving
+                  ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                  : const Text('Save'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final gradient = isDark ? AppColors.heroGradientDark : AppColors.heroGradient;
+    final gradient = isDark ? AppColors.heroGradientDark : AppColors.heroGradientLight;
     final auth = context.watch<AuthNotifier>();
     final settings = context.watch<SettingsNotifier>();
     final email = auth.user?.email ?? '';
-    final name = auth.user?.displayName;
+    final name = auth.user?.displayName ?? '';
 
     return Scaffold(
       body: CustomScrollView(
         slivers: [
           SliverAppBar(
-            expandedHeight: 170,
+            expandedHeight: 180,
             pinned: true,
             automaticallyImplyLeading: false,
             flexibleSpace: Container(
@@ -42,13 +86,15 @@ class SettingsView extends StatelessWidget {
                     child: Row(
                       children: [
                         CircleAvatar(
-                          radius: 28,
-                          backgroundColor: Colors.white.withOpacity(0.2),
+                          radius: 30,
+                          backgroundColor: const Color(0xFF10B981),
                           child: Text(
-                            (name?.isNotEmpty == true ? name![0] : email.isNotEmpty ? email[0] : '?')
-                                .toUpperCase(),
+                            (name.isNotEmpty ? name[0] : email.isNotEmpty ? email[0] : '?').toUpperCase(),
                             style: const TextStyle(
-                                color: Colors.white, fontSize: 22, fontWeight: FontWeight.w700),
+                              color: Colors.white,
+                              fontSize: 24,
+                              fontWeight: FontWeight.w800,
+                            ),
                           ),
                         ),
                         const SizedBox(width: 14),
@@ -57,16 +103,29 @@ class SettingsView extends StatelessWidget {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              Text(
-                                (name?.isNotEmpty == true) ? name! : 'Your Account',
-                                style: const TextStyle(
-                                    color: Colors.white, fontSize: 18, fontWeight: FontWeight.w700),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: Text(
+                                      name.isNotEmpty ? name : 'My Account',
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                  IconButton(
+                                    icon: const Icon(Icons.edit_rounded, color: Colors.white70, size: 18),
+                                    onPressed: () => _showEditNameDialog(context, name),
+                                  ),
+                                ],
                               ),
                               Text(
                                 email,
-                                style: TextStyle(color: Colors.white.withOpacity(0.75), fontSize: 12.5),
+                                style: TextStyle(color: Colors.white.withValues(alpha: 0.75), fontSize: 12.5),
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                               ),
@@ -86,13 +145,13 @@ class SettingsView extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _SectionLabel('Preferences'),
+                  const _SectionLabel('App Preferences'),
                   Card(
                     child: Column(
                       children: [
                         SwitchListTile(
-                          title: const Text('Dark mode'),
-                          subtitle: const Text('Switch between light and dark theme'),
+                          title: const Text('Dark Theme'),
+                          subtitle: const Text('CashFlow Pro dark emerald interface'),
                           value: settings.isDark,
                           onChanged: (v) => settings.toggleTheme(v),
                           secondary: const Icon(Icons.dark_mode_rounded),
@@ -106,38 +165,76 @@ class SettingsView extends StatelessWidget {
                           onTap: () => _showCurrencyPicker(context, settings),
                         ),
                         const Divider(height: 1),
+                        SwitchListTile(
+                          title: const Text('Financial Alerts & Warnings'),
+                          subtitle: const Text('Notifications for budget limits & overspending'),
+                          value: settings.notificationsEnabled,
+                          onChanged: (v) => settings.toggleNotifications(v),
+                          secondary: const Icon(Icons.notifications_active_rounded),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+
+                  const _SectionLabel('Management & Customization'),
+                  Card(
+                    child: Column(
+                      children: [
                         ListTile(
-                          leading: const Icon(Icons.flag_rounded),
-                          title: const Text('Monthly budget'),
+                          leading: const Icon(Icons.category_rounded, color: Color(0xFF10B981)),
+                          title: const Text('Custom Categories'),
+                          subtitle: const Text('Create & manage custom expense/income categories'),
                           trailing: const Icon(Icons.chevron_right_rounded),
-                          onTap: () => showModalBottomSheet(
-                            context: context,
-                            isScrollControlled: true,
-                            backgroundColor: Colors.transparent,
-                            builder: (_) => const BudgetSheet(),
+                          onTap: () => Navigator.push(
+                            context,
+                            MaterialPageRoute(builder: (_) => const CategoryManagerView()),
+                          ),
+                        ),
+                        const Divider(height: 1),
+                        ListTile(
+                          leading: const Icon(Icons.flag_rounded, color: Color(0xFFF97316)),
+                          title: const Text('Budget & Financial Goals'),
+                          subtitle: const Text('Manage overall & category spending limits'),
+                          trailing: const Icon(Icons.chevron_right_rounded),
+                          onTap: () => Navigator.push(
+                            context,
+                            MaterialPageRoute(builder: (_) => const BudgetView()),
                           ),
                         ),
                       ],
                     ),
                   ),
                   const SizedBox(height: 20),
-                  _SectionLabel('Account'),
+
+                  const _SectionLabel('Account'),
                   Card(
                     child: ListTile(
                       leading: Icon(Icons.logout_rounded, color: Theme.of(context).colorScheme.error),
-                      title: Text('Sign out',
-                          style: TextStyle(color: Theme.of(context).colorScheme.error)),
+                      title: Text(
+                        'Sign Out',
+                        style: TextStyle(color: Theme.of(context).colorScheme.error, fontWeight: FontWeight.w600),
+                      ),
                       onTap: () => _confirmSignOut(context),
                     ),
                   ),
-                  const SizedBox(height: 20),
-                  Center(
-                    child: Text('Expense Tracker · v1.0',
-                        style: TextStyle(
-                            fontSize: 12,
-                            color: Theme.of(context).colorScheme.onSurfaceVariant)),
-                  ),
                   const SizedBox(height: 24),
+                  Center(
+                    child: Column(
+                      children: [
+                        const Text(
+                          'CashFlow Pro · v1.0.0',
+                          style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.grey),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          'Complete Professional Expense Tracker',
+                          style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 30),
                 ],
               ),
             ),
@@ -153,7 +250,7 @@ class SettingsView extends StatelessWidget {
       builder: (_) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: const Text('Sign out?'),
-        content: const Text('You can sign back in anytime with your email and password.'),
+        content: const Text('You can sign back in anytime with your credentials.'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
@@ -177,13 +274,9 @@ class SettingsView extends StatelessWidget {
   void _showCurrencyPicker(BuildContext context, SettingsNotifier settings) {
     showModalBottomSheet(
       context: context,
-      backgroundColor: Colors.transparent,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(28))),
       builder: (_) => Container(
-        padding: const EdgeInsets.symmetric(vertical: 12),
-        decoration: BoxDecoration(
-          color: Theme.of(context).colorScheme.surface,
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
-        ),
+        padding: const EdgeInsets.symmetric(vertical: 16),
         child: SafeArea(
           top: false,
           child: Column(
@@ -191,14 +284,13 @@ class SettingsView extends StatelessWidget {
             children: [
               const Padding(
                 padding: EdgeInsets.symmetric(vertical: 8),
-                child: Text('Select currency',
-                    style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
+                child: Text('Select Currency', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
               ),
               ...kSupportedCurrencies.map((c) => ListTile(
-                    leading: Text(c.symbol, style: const TextStyle(fontSize: 18)),
+                    leading: Text(c.symbol, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
                     title: Text(c.label),
                     trailing: c.code == settings.currency.code
-                        ? const Icon(Icons.check_circle_rounded, color: Color(0xFF22C55E))
+                        ? const Icon(Icons.check_circle_rounded, color: Color(0xFF10B981))
                         : null,
                     onTap: () {
                       settings.setCurrency(c);
@@ -231,3 +323,4 @@ class _SectionLabel extends StatelessWidget {
     );
   }
 }
+

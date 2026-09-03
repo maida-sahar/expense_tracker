@@ -3,6 +3,7 @@
 import 'package:expense_tracker/Notifier/auth_notifier.dart';
 import 'package:expense_tracker/theme/app_theme.dart';
 import 'package:expense_tracker/views/auth/signup_view.dart';
+import 'package:expense_tracker/widgets/cashflow_logo.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -58,8 +59,6 @@ class _LoginViewState extends State<LoginView> {
         ),
       );
     }
-    // If ok == false and auth.error == null, the user simply closed the
-    // Google account picker — no need to show anything.
   }
 
   Future<void> _showForgotPasswordDialog() async {
@@ -70,16 +69,16 @@ class _LoginViewState extends State<LoginView> {
       context: context,
       builder: (dialogContext) {
         return StatefulBuilder(
-          builder: (context, setDialogState) {
+          builder: (dialogCtx, setDialogState) {
             return AlertDialog(
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-              title: const Text('Reset password'),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+              title: const Text('Reset Password', style: TextStyle(fontWeight: FontWeight.w700)),
               content: Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const Text(
-                    'Enter your account email. We\'ll send you a link to reset your password.',
+                    'Enter your account email. We\'ll send you a password reset link.',
                   ),
                   const SizedBox(height: 16),
                   TextField(
@@ -94,7 +93,7 @@ class _LoginViewState extends State<LoginView> {
               ),
               actions: [
                 TextButton(
-                  onPressed: sending ? null : () => Navigator.pop(dialogContext),
+                  onPressed: sending ? null : () => Navigator.pop(dialogCtx),
                   child: const Text('Cancel'),
                 ),
                 FilledButton(
@@ -103,25 +102,27 @@ class _LoginViewState extends State<LoginView> {
                       : () async {
                           final email = resetEmailCtrl.text.trim();
                           if (email.isEmpty || !email.contains('@')) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text('Enter a valid email first')),
-                            );
+                            if (dialogCtx.mounted) {
+                              ScaffoldMessenger.of(dialogCtx).showSnackBar(
+                                const SnackBar(content: Text('Enter a valid email first')),
+                              );
+                            }
                             return;
                           }
                           setDialogState(() => sending = true);
-                          final auth = context.read<AuthNotifier>();
+                          final auth = dialogCtx.read<AuthNotifier>();
                           final ok = await auth.sendPasswordResetEmail(email);
-                          if (dialogContext.mounted) Navigator.pop(dialogContext);
+                          if (dialogCtx.mounted) Navigator.pop(dialogCtx);
                           if (!mounted) return;
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(
                               content: Text(
                                 ok
-                                    ? 'Password reset email sent to $email'
+                                    ? 'Password reset link sent to $email'
                                     : (auth.error ?? 'Could not send reset email'),
                               ),
                               backgroundColor: ok
-                                  ? const Color(0xFF22C55E)
+                                  ? const Color(0xFF10B981)
                                   : Theme.of(context).colorScheme.error,
                             ),
                           );
@@ -132,7 +133,7 @@ class _LoginViewState extends State<LoginView> {
                           width: 18,
                           child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
                         )
-                      : const Text('Send link'),
+                      : const Text('Send Link'),
                 ),
               ],
             );
@@ -145,12 +146,8 @@ class _LoginViewState extends State<LoginView> {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final gradient = isDark ? AppColors.heroGradientDark : AppColors.heroGradient;
+    final gradient = isDark ? AppColors.heroGradientDark : AppColors.heroGradientLight;
 
-    // Keeps the status bar + Android gesture/nav bar transparent and blended
-    // with our gradient, instead of showing the system default (white/grey)
-    // strip above and below our content — that mismatch is what made the
-    // green look like it only covered "half" the screen on some devices.
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: SystemUiOverlayStyle(
         statusBarColor: Colors.transparent,
@@ -162,8 +159,6 @@ class _LoginViewState extends State<LoginView> {
       child: Scaffold(
         extendBody: true,
         extendBodyBehindAppBar: true,
-        // Fallback color so there is never a white flash behind the gradient
-        // (e.g. during the first frame or on very tall/notched screens).
         backgroundColor: gradient.last,
         body: SizedBox.expand(
           child: DecoratedBox(
@@ -178,44 +173,36 @@ class _LoginViewState extends State<LoginView> {
               child: LayoutBuilder(
                 builder: (context, constraints) {
                   return SingleChildScrollView(
-                    padding: const EdgeInsets.fromLTRB(24, 32, 24, 24),
+                    padding: const EdgeInsets.fromLTRB(24, 24, 24, 24),
                     child: ConstrainedBox(
-                      constraints: BoxConstraints(minHeight: constraints.maxHeight - 56),
+                      constraints: BoxConstraints(minHeight: constraints.maxHeight - 48),
                       child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                        crossAxisAlignment: CrossAxisAlignment.center,
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Container(
-                            width: 60,
-                            height: 60,
-                            decoration: BoxDecoration(
-                              color: Colors.white.withOpacity(0.15),
-                              borderRadius: BorderRadius.circular(18),
+                          const CashFlowLogo(size: 72, iconSize: 36),
+                          const SizedBox(height: 16),
+                          const Text(
+                            'CashFlow Pro',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 26,
+                              fontWeight: FontWeight.w800,
+                              letterSpacing: 0.5,
                             ),
-                            child: const Icon(Icons.account_balance_wallet_rounded,
-                                color: Colors.white, size: 30),
                           ),
-                          const SizedBox(height: 28),
-                          Text('Welcome back',
-                              style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                                    color: Colors.white,
-                                  )),
-                          const SizedBox(height: 6),
-                          Text('Sign in to keep tracking your money',
-                              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                    color: Colors.white.withOpacity(0.8),
-                                  )),
-                          const SizedBox(height: 32),
+                          const SizedBox(height: 20),
                           Container(
-                            padding: const EdgeInsets.all(22),
+                            padding: const EdgeInsets.all(24),
                             decoration: BoxDecoration(
-                              color: Theme.of(context).colorScheme.surface,
+                              color: const Color(0xFF122521),
                               borderRadius: BorderRadius.circular(28),
+                              border: Border.all(color: const Color(0xFF1F3D36), width: 1.2),
                               boxShadow: [
                                 BoxShadow(
-                                  color: Colors.black.withOpacity(0.15),
-                                  blurRadius: 24,
-                                  offset: const Offset(0, 10),
+                                  color: Colors.black.withValues(alpha: 0.3),
+                                  blurRadius: 28,
+                                  offset: const Offset(0, 12),
                                 ),
                               ],
                             ),
@@ -224,11 +211,32 @@ class _LoginViewState extends State<LoginView> {
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.stretch,
                                 children: [
+                                  const Center(
+                                    child: Text(
+                                      'Welcome Back',
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 22,
+                                        fontWeight: FontWeight.w800,
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Center(
+                                    child: Text(
+                                      'Sign in to keep tracking your money',
+                                      style: TextStyle(
+                                        color: Colors.white.withValues(alpha: 0.7),
+                                        fontSize: 13,
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 24),
                                   TextFormField(
                                     controller: _emailCtrl,
                                     keyboardType: TextInputType.emailAddress,
                                     decoration: const InputDecoration(
-                                      labelText: 'Email',
+                                      labelText: 'Email Address',
                                       prefixIcon: Icon(Icons.email_outlined),
                                     ),
                                     validator: (v) => (v == null || !v.contains('@'))
@@ -263,17 +271,20 @@ class _LoginViewState extends State<LoginView> {
                                         minimumSize: const Size(0, 36),
                                         tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                                       ),
-                                      child: const Text('Forgot password?',
-                                          style: TextStyle(fontWeight: FontWeight.w600)),
+                                      child: const Text(
+                                        'Forgot password?',
+                                        style: TextStyle(fontWeight: FontWeight.w600, color: Color(0xFF34D399)),
+                                      ),
                                     ),
                                   ),
-                                  const SizedBox(height: 6),
+                                  const SizedBox(height: 8),
                                   FilledButton(
                                     onPressed: _submitting ? null : _submit,
                                     style: FilledButton.styleFrom(
                                       padding: const EdgeInsets.symmetric(vertical: 16),
+                                      backgroundColor: const Color(0xFF10B981),
                                       shape: RoundedRectangleBorder(
-                                          borderRadius: BorderRadius.circular(14)),
+                                          borderRadius: BorderRadius.circular(16)),
                                     ),
                                     child: _submitting
                                         ? const SizedBox(
@@ -284,31 +295,33 @@ class _LoginViewState extends State<LoginView> {
                                           )
                                         : const Text('Sign In',
                                             style: TextStyle(
-                                                fontWeight: FontWeight.w700, fontSize: 15)),
+                                                fontWeight: FontWeight.w700, fontSize: 16)),
                                   ),
                                   const SizedBox(height: 18),
                                   Row(
                                     children: [
-                                      Expanded(child: Divider(color: Colors.grey.shade300)),
+                                      Expanded(child: Divider(color: Colors.white.withValues(alpha: 0.15))),
                                       Padding(
                                         padding: const EdgeInsets.symmetric(horizontal: 10),
                                         child: Text('OR',
                                             style: TextStyle(
-                                                color: Colors.grey.shade500,
-                                                fontSize: 12,
-                                                fontWeight: FontWeight.w600)),
+                                                color: Colors.white.withValues(alpha: 0.5),
+                                                fontSize: 11,
+                                                fontWeight: FontWeight.w700)),
                                       ),
-                                      Expanded(child: Divider(color: Colors.grey.shade300)),
+                                      Expanded(child: Divider(color: Colors.white.withValues(alpha: 0.15))),
                                     ],
                                   ),
                                   const SizedBox(height: 18),
-                                  OutlinedButton(
+                                  ElevatedButton(
                                     onPressed: _googleSubmitting ? null : _submitGoogle,
-                                    style: OutlinedButton.styleFrom(
-                                      padding: const EdgeInsets.symmetric(vertical: 14),
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: Colors.white,
+                                      foregroundColor: Colors.black87,
+                                      padding: const EdgeInsets.symmetric(vertical: 15),
                                       shape: RoundedRectangleBorder(
-                                          borderRadius: BorderRadius.circular(14)),
-                                      side: BorderSide(color: Colors.grey.shade300),
+                                          borderRadius: BorderRadius.circular(16)),
+                                      elevation: 0,
                                     ),
                                     child: _googleSubmitting
                                         ? const SizedBox(
@@ -316,19 +329,17 @@ class _LoginViewState extends State<LoginView> {
                                             width: 20,
                                             child: CircularProgressIndicator(strokeWidth: 2),
                                           )
-                                        : Row(
+                                        : const Row(
                                             mainAxisAlignment: MainAxisAlignment.center,
                                             children: [
-                                              const _GoogleLogo(size: 20),
-                                              const SizedBox(width: 10),
+                                              _GoogleLogo(size: 20),
+                                              SizedBox(width: 10),
                                               Text(
                                                 'Continue with Google',
                                                 style: TextStyle(
-                                                  fontWeight: FontWeight.w600,
+                                                  fontWeight: FontWeight.w700,
                                                   fontSize: 14.5,
-                                                  color: Theme.of(context)
-                                                      .colorScheme
-                                                      .onSurface,
+                                                  color: Colors.black87,
                                                 ),
                                               ),
                                             ],
@@ -346,16 +357,14 @@ class _LoginViewState extends State<LoginView> {
                               ),
                               child: RichText(
                                 text: TextSpan(
-                                  style: TextStyle(color: Colors.white.withOpacity(0.85)),
+                                  style: TextStyle(color: Colors.white.withValues(alpha: 0.85)),
                                   children: const [
                                     TextSpan(text: "Don't have an account? "),
                                     TextSpan(
                                       text: 'Sign up',
                                       style: TextStyle(
-                                          fontWeight: FontWeight.w700, color: Colors.white),
+                                          fontWeight: FontWeight.w700, color: Color(0xFF34D399)),
                                     ),
-
-                                    
                                   ],
                                 ),
                               ),
@@ -375,8 +384,6 @@ class _LoginViewState extends State<LoginView> {
   }
 }
 
-/// A simple, dependency-free approximation of the Google "G" mark built from
-/// four colored arcs. Avoids bundling an image asset just for one icon.
 class _GoogleLogo extends StatelessWidget {
   final double size;
   const _GoogleLogo({required this.size});
@@ -419,7 +426,6 @@ class _GoogleGPainter extends CustomPainter {
     drawArc(135, 90, const Color(0xFFFBBC05)); // yellow
     drawArc(225, 90, const Color(0xFFEA4335)); // red
 
-    // Small horizontal bar to mimic the "G" crossbar.
     final barPaint = Paint()..color = const Color(0xFF4285F4);
     canvas.drawRect(
       Rect.fromLTWH(size.width * 0.52, size.height * 0.44, size.width * 0.42, size.height * 0.14),

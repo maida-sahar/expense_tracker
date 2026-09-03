@@ -3,7 +3,6 @@
 import 'package:expense_tracker/Notifier/auth_notifier.dart';
 import 'package:expense_tracker/Notifier/settings_notifier.dart';
 import 'package:expense_tracker/Notifier/transaction_notifier.dart';
-import 'package:expense_tracker/models/category.dart';
 import 'package:expense_tracker/models/transaction.dart';
 import 'package:expense_tracker/widgets/category_picker.dart';
 import 'package:flutter/material.dart';
@@ -15,8 +14,9 @@ class AddDialog extends StatefulWidget {
   /// Pass when editing an existing transaction
   final String? editId;
   final Transaction? existing;
+  final TransactionType? initialType;
 
-  const AddDialog({super.key, this.editId, this.existing});
+  const AddDialog({super.key, this.editId, this.existing, this.initialType});
 
   @override
   State<AddDialog> createState() => _AddDialogState();
@@ -30,6 +30,7 @@ class _AddDialogState extends State<AddDialog>
   late TransactionType _selectedType;
   late String _categoryId;
   late DateTime _date;
+  late String _paymentMethod;
   late final TextEditingController _titleController;
   late final TextEditingController _amountController;
   late final TextEditingController _noteController;
@@ -48,14 +49,18 @@ class _AddDialogState extends State<AddDialog>
     _ctrl.forward();
 
     final t = widget.existing;
-    _selectedType = t?.type ?? TransactionType.expense;
-    _categoryId = t?.categoryId ??
-        Categories.forType(_selectedType == TransactionType.income).first.id;
+    _selectedType = t?.type ?? widget.initialType ?? TransactionType.expense;
     _date = t?.date ?? DateTime.now();
+    _paymentMethod = t?.paymentMethod ?? 'Cash';
     _titleController = TextEditingController(text: t?.title ?? '');
     _amountController = TextEditingController(
         text: t != null ? t.amount.toStringAsFixed(2) : '');
     _noteController = TextEditingController(text: t?.note ?? '');
+
+    // Set initial category safely
+    final notifier = context.read<TransactionNotifier>();
+    final cats = notifier.allCategories(_selectedType == TransactionType.income);
+    _categoryId = t?.categoryId ?? (cats.isNotEmpty ? cats.first.id : 'other_expense');
   }
 
   @override
@@ -70,26 +75,35 @@ class _AddDialogState extends State<AddDialog>
   void _switchType(TransactionType type) {
     setState(() {
       _selectedType = type;
-      // Reset category to first of the new type's list so we never keep a
-      // mismatched category selected (e.g. "Salary" under Expense).
-      _categoryId = Categories.forType(type == TransactionType.income).first.id;
+      final notifier = context.read<TransactionNotifier>();
+      final cats = notifier.allCategories(type == TransactionType.income);
+      if (cats.isNotEmpty) {
+        _categoryId = cats.first.id;
+      }
     });
   }
 
   Future<void> _pickDate() async {
-    final picked = await showDatePicker(
+    final pickedDate = await showDatePicker(
       context: context,
       initialDate: _date,
       firstDate: DateTime(2015),
       lastDate: DateTime.now().add(const Duration(days: 365)),
     );
-    if (picked != null) {
+
+    if (pickedDate != null && mounted) {
+      final pickedTime = await showTimePicker(
+        context: context,
+        initialTime: TimeOfDay.fromDateTime(_date),
+      );
+
+      final time = pickedTime ?? TimeOfDay.fromDateTime(_date);
       setState(() => _date = DateTime(
-            picked.year,
-            picked.month,
-            picked.day,
-            _date.hour,
-            _date.minute,
+            pickedDate.year,
+            pickedDate.month,
+            pickedDate.day,
+            time.hour,
+            time.minute,
           ));
     }
   }
@@ -114,6 +128,7 @@ class _AddDialogState extends State<AddDialog>
       type: _selectedType,
       date: _date,
       categoryId: _categoryId,
+      paymentMethod: _paymentMethod,
       note: _noteController.text.trim(),
     );
 
@@ -146,11 +161,10 @@ class _AddDialogState extends State<AddDialog>
     return FadeTransition(
       opacity: _fadeIn,
       child: Dialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-        insetPadding:
-            const EdgeInsets.symmetric(horizontal: 20, vertical: 32),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(26)),
+        insetPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 24),
         child: Padding(
-          padding: const EdgeInsets.all(24),
+          padding: const EdgeInsets.all(22),
           child: Form(
             key: _formKey,
             child: SingleChildScrollView(
@@ -165,18 +179,24 @@ class _AddDialogState extends State<AddDialog>
                         width: 40,
                         height: 40,
                         decoration: BoxDecoration(
-                          color: colors.primaryContainer,
-                          borderRadius: BorderRadius.circular(10),
+                          color: isIncome
+                              ? const Color(0xFF10B981).withValues(alpha: 0.18)
+                              : const Color(0xFFF97316).withValues(alpha: 0.18),
+                          borderRadius: BorderRadius.circular(12),
                         ),
                         child: Icon(
-                          _isEditing ? Icons.edit_rounded : Icons.add_rounded,
-                          color: colors.onPrimaryContainer,
+                          _isEditing
+                              ? Icons.edit_rounded
+                              : (isIncome ? Icons.south_west_rounded : Icons.north_east_rounded),
+                          color: isIncome ? const Color(0xFF10B981) : const Color(0xFFF97316),
                           size: 22,
                         ),
                       ),
                       const SizedBox(width: 12),
                       Text(
-                        _isEditing ? 'Edit Transaction' : 'New Transaction',
+                        _isEditing
+                            ? 'Edit Transaction'
+                            : (isIncome ? 'Add Income' : 'Add Expense'),
                         style: Theme.of(context).textTheme.titleLarge?.copyWith(
                               fontWeight: FontWeight.w700,
                             ),
@@ -189,29 +209,32 @@ class _AddDialogState extends State<AddDialog>
                     ],
                   ),
 
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 18),
 
                   // Type toggle
                   Container(
+                    padding: const EdgeInsets.all(4),
                     decoration: BoxDecoration(
-                      color: colors.surfaceContainerHighest,
-                      borderRadius: BorderRadius.circular(12),
+                      color: Theme.of(context).brightness == Brightness.dark
+                          ? const Color(0xFF0F1E1B)
+                          : const Color(0xFFE2E8F0),
+                      borderRadius: BorderRadius.circular(14),
                     ),
                     child: Row(
                       children: [
                         _TypeButton(
-                          label: 'Income',
-                          icon: Icons.arrow_downward_rounded,
-                          selected: isIncome,
-                          selectedColor: const Color(0xFF22C55E),
-                          onTap: () => _switchType(TransactionType.income),
-                        ),
-                        _TypeButton(
                           label: 'Expense',
                           icon: Icons.arrow_upward_rounded,
                           selected: !isIncome,
-                          selectedColor: colors.error,
+                          selectedColor: const Color(0xFFF97316),
                           onTap: () => _switchType(TransactionType.expense),
+                        ),
+                        _TypeButton(
+                          label: 'Income',
+                          icon: Icons.arrow_downward_rounded,
+                          selected: isIncome,
+                          selectedColor: const Color(0xFF10B981),
+                          onTap: () => _switchType(TransactionType.income),
                         ),
                       ],
                     ),
@@ -239,7 +262,7 @@ class _AddDialogState extends State<AddDialog>
                     controller: _titleController,
                     textCapitalization: TextCapitalization.sentences,
                     decoration: const InputDecoration(
-                      labelText: 'Title',
+                      labelText: 'Title / Description',
                       prefixIcon: Icon(Icons.label_outline_rounded),
                     ),
                     validator: (v) => (v == null || v.trim().isEmpty)
@@ -263,7 +286,7 @@ class _AddDialogState extends State<AddDialog>
                       prefixIcon: Padding(
                         padding: const EdgeInsets.all(14),
                         child: Text(currencySymbol,
-                            style: const TextStyle(fontWeight: FontWeight.w600)),
+                            style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
                       ),
                       prefixIconConstraints:
                           const BoxConstraints(minWidth: 0, minHeight: 0),
@@ -272,8 +295,9 @@ class _AddDialogState extends State<AddDialog>
                       if (v == null || v.trim().isEmpty) {
                         return 'Enter an amount';
                       }
-                      if (double.tryParse(v.trim()) == null) {
-                        return 'Enter a valid number';
+                      final parsed = double.tryParse(v.trim());
+                      if (parsed == null || parsed <= 0) {
+                        return 'Enter a valid amount';
                       }
                       return null;
                     },
@@ -281,16 +305,36 @@ class _AddDialogState extends State<AddDialog>
 
                   const SizedBox(height: 14),
 
-                  // Date picker
+                  // Payment Method Dropdown
+                  DropdownButtonFormField<String>(
+                    initialValue: _paymentMethod,
+                    decoration: const InputDecoration(
+                      labelText: 'Payment Method',
+                      prefixIcon: Icon(Icons.payment_rounded),
+                    ),
+                    items: kPaymentMethods.map((m) {
+                      return DropdownMenuItem(value: m, child: Text(m));
+                    }).toList(),
+                    onChanged: (val) {
+                      if (val != null) setState(() => _paymentMethod = val);
+                    },
+                  ),
+
+                  const SizedBox(height: 14),
+
+                  // Date & Time picker
                   InkWell(
                     borderRadius: BorderRadius.circular(14),
                     onTap: _pickDate,
                     child: InputDecorator(
                       decoration: const InputDecoration(
-                        labelText: 'Date',
+                        labelText: 'Date & Time',
                         prefixIcon: Icon(Icons.calendar_today_rounded),
                       ),
-                      child: Text(DateFormat('MMM d, yyyy').format(_date)),
+                      child: Text(
+                        DateFormat('MMM d, yyyy · h:mm a').format(_date),
+                        style: const TextStyle(fontWeight: FontWeight.w500),
+                      ),
                     ),
                   ),
 
@@ -313,9 +357,10 @@ class _AddDialogState extends State<AddDialog>
                   FilledButton(
                     onPressed: _submitting ? null : _submit,
                     style: FilledButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      backgroundColor: isIncome ? const Color(0xFF10B981) : const Color(0xFFF97316),
                       shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12)),
+                          borderRadius: BorderRadius.circular(14)),
                     ),
                     child: _submitting
                         ? const SizedBox(
@@ -325,9 +370,9 @@ class _AddDialogState extends State<AddDialog>
                                 strokeWidth: 2, color: Colors.white),
                           )
                         : Text(
-                            _isEditing ? 'Save Changes' : 'Add Transaction',
+                            _isEditing ? 'Save Changes' : (isIncome ? 'Add Income' : 'Add Expense'),
                             style: const TextStyle(
-                                fontWeight: FontWeight.w600, fontSize: 15),
+                                fontWeight: FontWeight.w700, fontSize: 15),
                           ),
                   ),
                 ],
@@ -365,25 +410,24 @@ class _TypeButton extends StatelessWidget {
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 200),
           curve: Curves.easeInOut,
-          margin: const EdgeInsets.all(4),
-          padding: const EdgeInsets.symmetric(vertical: 10),
+          padding: const EdgeInsets.symmetric(vertical: 11),
           decoration: BoxDecoration(
             color: selected ? selectedColor : Colors.transparent,
-            borderRadius: BorderRadius.circular(9),
+            borderRadius: BorderRadius.circular(11),
           ),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Icon(icon,
-                  size: 18,
-                  color: selected ? Colors.white : Colors.grey.shade600),
+                  size: 17,
+                  color: selected ? Colors.white : Colors.grey.shade500),
               const SizedBox(width: 6),
               Text(
                 label,
                 style: TextStyle(
-                  fontWeight: FontWeight.w600,
-                  fontSize: 13,
-                  color: selected ? Colors.white : Colors.grey.shade600,
+                  fontWeight: FontWeight.w700,
+                  fontSize: 13.5,
+                  color: selected ? Colors.white : Colors.grey.shade500,
                 ),
               ),
             ],
@@ -393,3 +437,4 @@ class _TypeButton extends StatelessWidget {
     );
   }
 }
+
